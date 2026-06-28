@@ -1,0 +1,59 @@
+﻿# Visual Studio / C++ build output
+.vs/
+Debug/
+Release/
+x64/
+x86/
+bin/
+obj/
+out/
+build/
+
+# MSVC artifacts
+*.obj
+*.pdb
+*.ilk
+*.idb
+*.iobj
+*.ipdb
+*.exp
+*.lib
+*.tlog
+*.lastbuildstate
+*.log
+
+# User/local IDE files
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+.vscode/
+
+# Portable/release packages
+*.zip
+SilentPixel_stable_portable/
+SilentPixel_stable_portable.zip
+
+# Backups / temporary rescue folders
+backup*/
+backup_*/
+backup_hotfix_*/
+*_backup*/
+*.bak
+*.tmp
+
+# Generated reports / local test exports
+*_informe_silentpixel.txt
+*_informe_silentpixel*.txt
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Backup leftovers
+*.bak
+*.bak*
+*.bak_*
+*.cpp.bak*
+*.h.bak*
