@@ -1,18 +1,18 @@
 ﻿# SilentPixel
 
-SilentPixel es un visor local de imÃ¡genes para Windows con inspecciÃ³n tÃ©cnica de metadatos.
+SilentPixel es un visor local de imágenes para Windows con inspección técnica de metadatos.
 
-EstÃ¡ diseÃ±ado para abrir imÃ¡genes desde el propio equipo, mostrar informaciÃ³n Ãºtil del archivo y evitar dependencias innecesarias de servicios externos.
+Está diseñado para abrir imágenes desde el propio equipo, mostrar información útil del archivo y evitar dependencias innecesarias de servicios externos.
 
 ![Vista previa de SilentPixel](assets/silentpixel-preview-mclaren.png)
 
 ## Objetivo
 
-SilentPixel nace como una alternativa ligera, portable y privada a los visores de imÃ¡genes modernos que dependen de cuentas, servicios en segundo plano, sincronizaciÃ³n, nube o telemetrÃ­a.
+SilentPixel nace como una alternativa ligera, portable y privada a los visores de imágenes modernos que dependen de cuentas, servicios en segundo plano, sincronización, nube o telemetría.
 
 La idea es sencilla:
 
-- abrir imÃ¡genes locales;
+- abrir imágenes locales;
 - mostrar los metadatos que el archivo ya contiene;
 - no llamar a internet;
 - no abrir mapas;
@@ -21,24 +21,24 @@ La idea es sencilla:
 
 ## Funciones principales
 
-- Apertura de imÃ¡genes JPG, JPEG, PNG, BMP, HEIC y HEIF.
-- NavegaciÃ³n entre imÃ¡genes de una carpeta.
-- Zoom, ajuste a ventana, tamaÃ±o real y pantalla completa.
-- RotaciÃ³n visual.
-- Panel de metadatos tÃ©cnico.
-- ExportaciÃ³n de informe TXT.
+- Apertura de imágenes JPG, JPEG, PNG, BMP, HEIC y HEIF.
+- Navegación entre imágenes de una carpeta.
+- Zoom, ajuste a ventana, tamaño real y pantalla completa.
+- Rotación visual.
+- Panel de metadatos técnico.
+- Exportación de informe TXT.
 - Copia de resumen, hash, huella visual y coordenadas.
 - Hashes SHA-256, SHA-1 y MD5.
-- Huellas visuales aHash/dHash para comparaciÃ³n aproximada.
-- Lectura de EXIF, XMP, GPS, ICC/IPTC detectado y metadatos WIC cuando estÃ¡n disponibles.
+- Huellas visuales aHash/dHash para comparación aproximada.
+- Lectura de EXIF, XMP, GPS, ICC/IPTC detectado y metadatos WIC cuando están disponibles.
 
 ## Privacidad
 
-SilentPixel estÃ¡ pensado para funcionar de forma local.
+SilentPixel está pensado para funcionar de forma local.
 
 - No usa nube.
 - No usa cuentas.
-- No incluye telemetrÃ­a propia.
+- No incluye telemetría propia.
 - No abre mapas.
 - No llama a APIs externas.
 - No guarda historial/MRU.
@@ -46,42 +46,42 @@ SilentPixel estÃ¡ pensado para funcionar de forma local.
 - No usa Electron ni WebView.
 - No abre enlaces encontrados dentro de metadatos.
 
-Si una imagen contiene coordenadas GPS, SilentPixel las muestra como texto y permite copiarlas. La aplicaciÃ³n no abre Google Maps, no consulta servicios de mapas y no envÃ­a esas coordenadas a terceros.
+Si una imagen contiene coordenadas GPS, SilentPixel las muestra como texto y permite copiarlas. La aplicación no abre Google Maps, no consulta servicios de mapas y no envía esas coordenadas a terceros.
 
 ## Metadatos
 
-SilentPixel muestra informaciÃ³n que ya estÃ¡ dentro del archivo, cuando existe:
+SilentPixel muestra información que ya está dentro del archivo, cuando existe:
 
-- cÃ¡mara o dispositivo;
+- cámara o dispositivo;
 - modelo;
 - software;
 - fecha original;
 - ISO;
 - apertura;
-- velocidad de obturaciÃ³n;
+- velocidad de obturación;
 - distancia focal;
 - lente;
-- orientaciÃ³n EXIF;
+- orientación EXIF;
 - coordenadas GPS;
 - bloques EXIF/XMP/ICC/IPTC;
 - identificadores XMP;
-- software de ediciÃ³n;
+- software de edición;
 - sistema o plataforma indicada por el propio archivo.
 
-SilentPixel no inventa metadatos ni intenta deducir informaciÃ³n que el archivo no expone.
+SilentPixel no inventa metadatos ni intenta deducir información que el archivo no expone.
 
-> "La foto ya venÃ­a hablando." SilentPixel solo le pone subtÃ­tulos.
+> "La foto ya venía hablando." SilentPixel solo le pone subtítulos.
 
-## Contenedor tÃ©cnico
+## Contenedor técnico
 
-El apartado de contenedor funciona como inventario tÃ©cnico del JPEG/HEIC:
+El apartado de contenedor funciona como inventario técnico del JPEG/HEIC:
 
 - EXIF detectado;
 - XMP detectado;
 - ICC detectado;
 - IPTC detectado;
-- tamaÃ±o de bloques;
-- vista previa de XMP cuando es texto Ãºtil.
+- tamaño de bloques;
+- vista previa de XMP cuando es texto útil.
 
 ICC e IPTC se muestran como bloques detectados, sin intentar convertir el informe en una salida completa de ExifTool.
 
@@ -94,19 +94,19 @@ SilentPixel abre:
 - BMP
 - HEIC / HEIF
 
-El paquete portable de Windows incluye las librerÃ­as necesarias para abrir HEIC/HEIF. No hace falta instalar extensiones de Microsoft Store ni aÃ±adir componentes externos para usar HEIC desde la versiÃ³n portable.
+El paquete portable de Windows incluye las librerías necesarias para abrir HEIC/HEIF. No hace falta instalar extensiones de Microsoft Store ni añadir componentes externos para usar HEIC desde la versión portable.
 
 Para HEIC/HEIF, conserva todos los archivos incluidos en la carpeta portable. No ejecutes `SilentPixel.exe` separado de sus DLL.
 
 ## RAW
 
-SilentPixel no abre RAW en esta versiÃ³n.
+SilentPixel no abre RAW en esta versión.
 
-Formatos como NEF, CR2, CR3, ARW, RAF, ORF, RW2, DNG, PEF o SRW son archivos de trabajo/revelado, no formatos finales de visualizaciÃ³n general.
+Formatos como NEF, CR2, CR3, ARW, RAF, ORF, RW2, DNG, PEF o SRW son archivos de trabajo/revelado, no formatos finales de visualización general.
 
 ## Dispositivos probados
 
-SilentPixel se ha probado con archivos reales de distintas cÃ¡maras y dispositivos, incluyendo:
+SilentPixel se ha probado con archivos reales de distintas cámaras y dispositivos, incluyendo:
 
 ### Apple
 
@@ -188,7 +188,7 @@ SilentPixel se ha probado con archivos reales de distintas cÃ¡maras y disposit
 
 - DJI FC220
 
-## InstalaciÃ³n
+## Instalación
 
 SilentPixel es portable.
 
@@ -196,20 +196,20 @@ SilentPixel es portable.
 2. Extrae la carpeta completa.
 3. Ejecuta `SilentPixel.exe`.
 
-No requiere instalaciÃ³n tradicional.
+No requiere instalación tradicional.
 
-Para que HEIC/HEIF funcione correctamente, mantÃ©n `SilentPixel.exe` junto al resto de archivos incluidos en el paquete portable.
+Para que HEIC/HEIF funcione correctamente, mantén `SilentPixel.exe` junto al resto de archivos incluidos en el paquete portable.
 
-## Uso bÃ¡sico
+## Uso básico
 
 - Abrir: selecciona una imagen.
 - Anterior / Siguiente: navega por la carpeta actual.
 - Ajustar: ajusta la imagen a la ventana.
-- 1:1: muestra tamaÃ±o real.
+- 1:1: muestra tamaño real.
 - Rotar: rota visualmente la imagen.
 - Pantalla: alterna pantalla completa.
-- Metadatos: muestra u oculta el panel tÃ©cnico.
-- Exportar TXT: genera un informe tÃ©cnico del archivo actual.
+- Metadatos: muestra u oculta el panel técnico.
+- Exportar TXT: genera un informe técnico del archivo actual.
 
 ## Licencia
 
@@ -219,7 +219,8 @@ Consulta el archivo `LICENSE`.
 
 ## Estado
 
-VersiÃ³n inicial pÃºblica: `v0.1.0`.
+Versión inicial pública: `v0.1.0`.
 
-SilentPixel estÃ¡ en fase inicial, pero ya es funcional como visor local/offline e inspector tÃ©cnico de metadatos para imÃ¡genes comunes.
+SilentPixel está en fase inicial, pero ya es funcional como visor local/offline e inspector técnico de metadatos para imágenes comunes.
+
 
