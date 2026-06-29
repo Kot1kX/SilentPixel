@@ -44,6 +44,7 @@ struct MetadataInfo
     bool HasGps() const;
     bool HasShootingData() const;
     std::wstring GpsText() const;
+    std::wstring ExifOrientationText(bool includeRawValue) const;
     std::wstring HumanSummary() const;
     std::wstring FullText() const;
 };

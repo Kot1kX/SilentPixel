@@ -1,4 +1,4 @@
-﻿#include "MetadataService.h"
+#include "MetadataService.h"
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -589,6 +589,62 @@ std::wstring MetadataInfo::GpsText() const
     return gpsLatitude + L", " + gpsLongitude;
 }
 
+std::wstring MetadataInfo::ExifOrientationText(bool includeRawValue) const
+{
+    const std::wstring raw = CleanLine(orientation);
+    if (raw.empty())
+        return L"No disponible";
+
+    int value = 0;
+    bool hasValue = false;
+
+    try
+    {
+        size_t pos = raw.find_first_of(L"0123456789");
+        if (pos != std::wstring::npos)
+        {
+            size_t used = 0;
+            value = std::stoi(raw.substr(pos), &used);
+            hasValue = used > 0;
+        }
+    }
+    catch (...)
+    {
+        value = 0;
+        hasValue = false;
+    }
+
+    const wchar_t* label = nullptr;
+    switch (value)
+    {
+    case 1: label = L"normal"; break;
+    case 2: label = L"volteada horizontal"; break;
+    case 3: label = L"rotada 180°"; break;
+    case 4: label = L"volteada vertical"; break;
+    case 5: label = L"transpuesta"; break;
+    case 6: label = L"rotada 90° derecha"; break;
+    case 7: label = L"transversa"; break;
+    case 8: label = L"rotada 90° izquierda"; break;
+    default: break;
+    }
+
+    if (label)
+    {
+        if (includeRawValue)
+            return std::wstring(label) + L" (valor EXIF: " + std::to_wstring(value) + L")";
+        return label;
+    }
+
+    if (hasValue)
+    {
+        if (includeRawValue)
+            return L"desconocida (valor EXIF: " + std::to_wstring(value) + L")";
+        return L"desconocida";
+    }
+
+    return raw;
+}
+
 std::wstring MetadataInfo::HumanSummary() const
 {
     std::wstringstream ss;
@@ -640,7 +696,7 @@ std::wstring MetadataInfo::FullText() const
     ss << L"Formato: " << (formatName.empty() ? L"No disponible" : formatName) << L"\r\n";
     ss << L"Formato de p\u00EDxel: " << (pixelFormat.empty() ? L"No disponible" : pixelFormat) << L"\r\n";
     ss << L"Profundidad estimada: " << (bitsPerPixel == 0 ? L"No disponible" : std::to_wstring(bitsPerPixel) + L" bpp") << L"\r\n";
-    ss << L"Orientaci\u00F3n EXIF: " << (orientation.empty() ? L"No disponible" : orientation) << L"\r\n";
+    ss << L"Orientación EXIF: " << ExifOrientationText(true) << L"\r\n";
     ss << L"Perfil de color: " << (colorProfile.empty() ? L"No detectado" : colorProfile) << L"\r\n";
     if (!gpsRaw.empty()) ss << L"Coordenadas bruto: " << gpsRaw << L"\r\n";
     if (!warning.empty()) ss << L"Aviso: " << warning << L"\r\n";

@@ -1,4 +1,4 @@
-﻿#include "MainWindow.h"
+#include "MainWindow.h"
 #include "resource.h"
 #include <gdiplus.h>
 using namespace Gdiplus;
@@ -515,19 +515,17 @@ void MainWindow::OnPaint()
 
     if (state_.MetadataVisible())
     {
-        RECT panel = imageRc;
+        RECT panel{};
         panel.left = imageRc.right;
-        panel.right = client.right - GAP;
+        panel.top = TOP_BAR;
+        panel.right = client.right;
+        panel.bottom = client.bottom - STATUS_H;
         HBRUSH brush = CreateSolidBrush(PANEL);
         FillRect(memDc, &panel, brush);
         DeleteObject(brush);
 
-        HPEN panelPen = CreatePen(PS_SOLID, 1, RGB(42, 47, 56));
-        HGDIOBJ oldPanelPen = SelectObject(memDc, panelPen);
-        HBRUSH oldPanelBrush = reinterpret_cast<HBRUSH>(SelectObject(memDc, GetStockObject(HOLLOW_BRUSH)));
-        Rectangle(memDc, panel.left, panel.top, panel.right, panel.bottom);
-
-        const int panelPad = 12;
+        HGDIOBJ oldPanelBrush = SelectObject(memDc, GetStockObject(HOLLOW_BRUSH));
+const int panelPad = 12;
         const int buttonH = 24;
         const int buttonGap = 8;
         const int buttonBlockGap = panelPad;
@@ -539,22 +537,14 @@ void MainWindow::OnPaint()
         editBorder.right = panel.right - panelPad + 1;
         editBorder.bottom = gridTop - buttonBlockGap + 1;
         HPEN editPen = CreatePen(PS_SOLID, 1, RGB(45, 51, 61));
-        SelectObject(memDc, editPen);
+        HGDIOBJ oldEditPen = SelectObject(memDc, editPen);
         Rectangle(memDc, editBorder.left, editBorder.top, editBorder.right, editBorder.bottom);
         SelectObject(memDc, oldPanelBrush);
-        SelectObject(memDc, oldPanelPen);
+        SelectObject(memDc, oldEditPen);
         DeleteObject(editPen);
-        DeleteObject(panelPen);
     }
 
-    HPEN pen = CreatePen(PS_SOLID, 1, RGB(52, 56, 64));
-    HGDIOBJ oldPen = SelectObject(memDc, pen);
-    MoveToEx(memDc, 0, TOP_BAR - 1, nullptr);
-    LineTo(memDc, client.right, TOP_BAR - 1);
-    SelectObject(memDc, oldPen);
-    DeleteObject(pen);
-
-    DrawBrandSignature(memDc);
+DrawBrandSignature(memDc);
 
     RECT statusBg{};
     statusBg.left = 0;
@@ -1804,8 +1794,8 @@ void MainWindow::LayoutControls()
     {
         RECT rc = ImageArea();
         int px = rc.right;
-        int py = TOP_BAR + GAP;
-        int pw = client.right - px - GAP;
+        int py = TOP_BAR;
+        int pw = client.right - px;
         int bottom = client.bottom - STATUS_H;
         int panelPad = 12;
         int buttonH = 24;
@@ -1862,9 +1852,9 @@ void MainWindow::RedrawContentArea()
     GetClientRect(hwnd_, &client);
 
     RECT rc{};
-    rc.left = GAP;
-    rc.top = TOP_BAR + GAP;
-    rc.right = client.right - GAP;
+    rc.left = client.left;
+    rc.top = TOP_BAR;
+    rc.right = client.right;
     rc.bottom = client.bottom - STATUS_H;
 
     if (rc.right < rc.left) rc.right = rc.left;
@@ -2356,7 +2346,7 @@ std::wstring MainWindow::BuildPanelReportText() const
     ss << L"Formato: " << cleanOrNA(meta.formatName) << L"\r\n";
     ss << L"Formato de píxel: " << cleanOrNA(meta.pixelFormat) << L"\r\n";
     ss << L"Profundidad estimada: " << (meta.bitsPerPixel == 0 ? L"No disponible" : std::to_wstring(meta.bitsPerPixel) + L" bpp") << L"\r\n";
-    ss << L"Orientación EXIF: " << cleanOrNA(meta.orientation) << L"\r\n";
+    ss << L"Orientación EXIF: " << meta.ExifOrientationText(false) << L"\r\n";
     ss << L"Perfil de color: " << (meta.colorProfile.empty() ? L"No detectado" : meta.colorProfile) << L"\r\n\r\n";
 
     if (meta.HasShootingData())
@@ -2529,9 +2519,9 @@ RECT MainWindow::ImageArea() const
     RECT client{};
     GetClientRect(hwnd_, &client);
     RECT rc{};
-    rc.left = GAP;
-    rc.top = TOP_BAR + GAP;
-    rc.right = client.right - GAP;
+    rc.left = client.left;
+    rc.top = TOP_BAR;
+    rc.right = client.right;
     rc.bottom = client.bottom - STATUS_H;
     if (state_.MetadataVisible())
         rc.right -= META_WIDTH;
