@@ -7,6 +7,7 @@ using namespace Gdiplus;
 #include <commdlg.h>
 #include <shellapi.h>
 #include <windowsx.h>
+#include <uxtheme.h>
 #include <shlwapi.h>
 #include <filesystem>
 #include <algorithm>
@@ -19,6 +20,7 @@ using namespace Gdiplus;
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "comctl32.lib")
+#pragma comment(lib, "uxtheme.lib")
 
 namespace
 {
@@ -57,6 +59,17 @@ namespace
     constexpr COLORREF TEXT = RGB(232, 235, 239);
     constexpr COLORREF MUTED = RGB(158, 166, 176);
     constexpr COLORREF ACCENT = RGB(86, 156, 214);
+
+
+    void ApplySilentPixelDarkTheme(HWND control)
+    {
+        if (!control)
+            return;
+
+        // Hint nativo para controles Win32. No dibuja una scrollbar falsa.
+        // En Windows 10/11 suele oscurecer la barra de desplazamiento del EDIT.
+        SetWindowTheme(control, L"DarkMode_Explorer", nullptr);
+    }
 
     void ApplyRuntimePriority()
     {
@@ -437,6 +450,7 @@ void MainWindow::OnCreate()
         nullptr);
     SendMessageW(metaEdit_, WM_SETFONT, reinterpret_cast<WPARAM>(metaFont_ ? metaFont_ : uiFont_), TRUE);
     SendMessageW(metaEdit_, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(14, 14));
+    ApplySilentPixelDarkTheme(metaEdit_);
 
     btnCopySummary_ = MakeButton(hwnd_, ID_COPY_SUMMARY, L"Copiar resumen", instance_, uiFont_);
     btnCopyAll_ = MakeButton(hwnd_, ID_COPY_ALL, L"Copiar huella", instance_, uiFont_);
