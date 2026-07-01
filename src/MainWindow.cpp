@@ -239,6 +239,269 @@ LRESULT CALLBACK MainWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
+
+struct MetaAutoScrollState
+{
+    bool active = false;
+    POINT origin{};
+    HCURSOR cursor = nullptr;
+    bool ownsCursor = false;
+    double scrollRemainder = 0.0;
+};
+
+constexpr UINT_PTR TIMER_META_AUTOSCROLL = 4701;
+constexpr UINT META_AUTOSCROLL_TIMER_MS = 35;
+constexpr int META_AUTOSCROLL_DEADZONE_PX = 14;
+constexpr double META_AUTOSCROLL_PIXELS_PER_LINE = 360.0;
+constexpr double META_AUTOSCROLL_MAX_LINES_PER_TICK = 1.35;
+
+static HCURSOR CreateMetaAutoScrollCursor(bool& ownsCursor)
+{
+    ownsCursor = false;
+
+    constexpr int W = 32;
+    constexpr int H = 32;
+
+    BITMAPV5HEADER bi{};
+    bi.bV5Size = sizeof(BITMAPV5HEADER);
+    bi.bV5Width = W;
+    bi.bV5Height = -H;
+    bi.bV5Planes = 1;
+    bi.bV5BitCount = 32;
+    bi.bV5Compression = BI_BITFIELDS;
+    bi.bV5RedMask = 0x00FF0000;
+    bi.bV5GreenMask = 0x0000FF00;
+    bi.bV5BlueMask = 0x000000FF;
+    bi.bV5AlphaMask = 0xFF000000;
+
+    void* bits = nullptr;
+    HDC screenDc = GetDC(nullptr);
+    HBITMAP colorBitmap = CreateDIBSection(
+        screenDc,
+        reinterpret_cast<BITMAPINFO*>(&bi),
+        DIB_RGB_COLORS,
+        &bits,
+        nullptr,
+        0);
+    ReleaseDC(nullptr, screenDc);
+
+    if (!colorBitmap || !bits)
+    {
+        if (colorBitmap)
+            DeleteObject(colorBitmap);
+        return LoadCursorW(nullptr, IDC_SIZEALL);
+    }
+
+    ZeroMemory(bits, W * H * 4);
+
+    HDC memDc = CreateCompatibleDC(nullptr);
+    HGDIOBJ oldBmp = SelectObject(memDc, colorBitmap);
+
+    {
+        Gdiplus::Graphics g(memDc);
+        g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+        g.SetCompositingMode(Gdiplus::CompositingModeSourceOver);
+
+        Gdiplus::Pen shadow(Gdiplus::Color(115, 0, 0, 0), 3.4f);
+        shadow.SetStartCap(Gdiplus::LineCapRound);
+        shadow.SetEndCap(Gdiplus::LineCapRound);
+        shadow.SetLineJoin(Gdiplus::LineJoinRound);
+
+        Gdiplus::Pen pen(Gdiplus::Color(235, 172, 180, 190), 2.2f);
+        pen.SetStartCap(Gdiplus::LineCapRound);
+        pen.SetEndCap(Gdiplus::LineCapRound);
+        pen.SetLineJoin(Gdiplus::LineJoinRound);
+
+        auto drawArrows = [&](Gdiplus::Pen& p, float offset)
+        {
+            g.DrawLine(&p, 16.0f + offset, 5.0f + offset, 10.0f + offset, 11.0f + offset);
+            g.DrawLine(&p, 16.0f + offset, 5.0f + offset, 22.0f + offset, 11.0f + offset);
+
+            g.DrawLine(&p, 16.0f + offset, 27.0f + offset, 10.0f + offset, 21.0f + offset);
+            g.DrawLine(&p, 16.0f + offset, 27.0f + offset, 22.0f + offset, 21.0f + offset);
+
+            g.DrawLine(&p, 5.0f + offset, 16.0f + offset, 11.0f + offset, 10.0f + offset);
+            g.DrawLine(&p, 5.0f + offset, 16.0f + offset, 11.0f + offset, 22.0f + offset);
+
+            g.DrawLine(&p, 27.0f + offset, 16.0f + offset, 21.0f + offset, 10.0f + offset);
+            g.DrawLine(&p, 27.0f + offset, 16.0f + offset, 21.0f + offset, 22.0f + offset);
+        };
+
+        drawArrows(shadow, 1.0f);
+        drawArrows(pen, 0.0f);
+
+        Gdiplus::SolidBrush center(Gdiplus::Color(210, 172, 180, 190));
+        g.FillEllipse(&center, 14.2f, 14.2f, 3.6f, 3.6f);
+    }
+
+    SelectObject(memDc, oldBmp);
+    DeleteDC(memDc);
+
+    HBITMAP maskBitmap = CreateBitmap(W, H, 1, 1, nullptr);
+    if (!maskBitmap)
+    {
+        DeleteObject(colorBitmap);
+        return LoadCursorW(nullptr, IDC_SIZEALL);
+    }
+
+    ICONINFO ii{};
+    ii.fIcon = FALSE;
+    ii.xHotspot = W / 2;
+    ii.yHotspot = H / 2;
+    ii.hbmMask = maskBitmap;
+    ii.hbmColor = colorBitmap;
+
+    HCURSOR cursor = CreateIconIndirect(&ii);
+
+    DeleteObject(colorBitmap);
+    DeleteObject(maskBitmap);
+
+    if (cursor)
+    {
+        ownsCursor = true;
+        return cursor;
+    }
+
+    return LoadCursorW(nullptr, IDC_SIZEALL);
+}
+
+static void StopMetaAutoScroll(HWND hwnd, MetaAutoScrollState* state)
+{
+    if (!state)
+        return;
+
+    state->active = false;
+    state->scrollRemainder = 0.0;
+    KillTimer(hwnd, TIMER_META_AUTOSCROLL);
+    SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+}
+
+static void SetMetaAutoScrollCursor(MetaAutoScrollState* state)
+{
+    if (!state)
+        return;
+
+    if (!state->cursor)
+        state->cursor = CreateMetaAutoScrollCursor(state->ownsCursor);
+
+    SetCursor(state->cursor ? state->cursor : LoadCursorW(nullptr, IDC_SIZEALL));
+}
+
+static int MetaAutoScrollLinesFromDelta(MetaAutoScrollState* state, int delta)
+{
+    if (!state)
+        return 0;
+
+    const int absDelta = delta < 0 ? -delta : delta;
+    if (absDelta <= META_AUTOSCROLL_DEADZONE_PX)
+    {
+        state->scrollRemainder = 0.0;
+        return 0;
+    }
+
+    const int direction = delta > 0 ? 1 : -1;
+    double linesPerTick = static_cast<double>(absDelta - META_AUTOSCROLL_DEADZONE_PX) / META_AUTOSCROLL_PIXELS_PER_LINE;
+
+    if (linesPerTick > META_AUTOSCROLL_MAX_LINES_PER_TICK)
+        linesPerTick = META_AUTOSCROLL_MAX_LINES_PER_TICK;
+
+    state->scrollRemainder += static_cast<double>(direction) * linesPerTick;
+
+    int lines = static_cast<int>(state->scrollRemainder);
+    if (lines > 2)
+        lines = 2;
+    if (lines < -2)
+        lines = -2;
+
+    state->scrollRemainder -= static_cast<double>(lines);
+    return lines;
+}
+
+LRESULT CALLBACK MetaEditSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData)
+{
+    auto* state = reinterpret_cast<MetaAutoScrollState*>(refData);
+
+    switch (msg)
+    {
+    case WM_MBUTTONDOWN:
+    {
+        if (!state)
+            break;
+
+        if (state->active)
+        {
+            StopMetaAutoScroll(hwnd, state);
+            return 0;
+        }
+
+        state->active = true;
+        state->scrollRemainder = 0.0;
+        state->origin.x = GET_X_LPARAM(lParam);
+        state->origin.y = GET_Y_LPARAM(lParam);
+        SetTimer(hwnd, TIMER_META_AUTOSCROLL, META_AUTOSCROLL_TIMER_MS, nullptr);
+        SetMetaAutoScrollCursor(state);
+        return 0;
+    }
+
+    case WM_TIMER:
+    {
+        if (wParam == TIMER_META_AUTOSCROLL && state && state->active)
+        {
+            POINT pt{};
+            GetCursorPos(&pt);
+            ScreenToClient(hwnd, &pt);
+
+            const int dy = pt.y - state->origin.y;
+            const int lines = MetaAutoScrollLinesFromDelta(state, dy);
+            if (lines != 0)
+                SendMessageW(hwnd, EM_LINESCROLL, 0, lines);
+
+            SetMetaAutoScrollCursor(state);
+            return 0;
+        }
+        break;
+    }
+
+    case WM_SETCURSOR:
+        if (state && state->active)
+        {
+            SetMetaAutoScrollCursor(state);
+            return TRUE;
+        }
+        break;
+
+    case WM_LBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_MOUSEWHEEL:
+    case WM_KILLFOCUS:
+        if (state && state->active)
+            StopMetaAutoScroll(hwnd, state);
+        break;
+
+    case WM_KEYDOWN:
+        if (wParam == VK_ESCAPE && state && state->active)
+        {
+            StopMetaAutoScroll(hwnd, state);
+            return 0;
+        }
+        break;
+
+    case WM_NCDESTROY:
+        if (state)
+        {
+            KillTimer(hwnd, TIMER_META_AUTOSCROLL);
+            if (state->cursor && state->ownsCursor)
+                DestroyCursor(state->cursor);
+            delete state;
+        }
+        RemoveWindowSubclass(hwnd, MetaEditSubclassProc, subclassId);
+        break;
+    }
+
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
 LRESULT CALLBACK MainWindow::ButtonSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData)
 {
     UNREFERENCED_PARAMETER(subclassId);
@@ -451,6 +714,7 @@ void MainWindow::OnCreate()
     SendMessageW(metaEdit_, WM_SETFONT, reinterpret_cast<WPARAM>(metaFont_ ? metaFont_ : uiFont_), TRUE);
     SendMessageW(metaEdit_, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(14, 14));
     ApplySilentPixelDarkTheme(metaEdit_);
+    SetWindowSubclass(metaEdit_, MetaEditSubclassProc, 1, reinterpret_cast<DWORD_PTR>(new MetaAutoScrollState()));
 
     btnCopySummary_ = MakeButton(hwnd_, ID_COPY_SUMMARY, L"Copiar resumen", instance_, uiFont_);
     btnCopyAll_ = MakeButton(hwnd_, ID_COPY_ALL, L"Copiar huella", instance_, uiFont_);
@@ -653,13 +917,33 @@ void MainWindow::OnCommand(WORD id)
         PrivacyGuard::CopyTextToClipboard(hwnd_, BuildSummaryText());
         break;
     case ID_COPY_ALL:
-        if (EnsureFullImageLoaded()) PrivacyGuard::CopyTextToClipboard(hwnd_, BuildFingerprintText());
+        if (EnsureFullImageLoaded())
+        {
+            if (state_.MetadataVisible())
+                UpdateMetadataPanel();
+
+            PrivacyGuard::CopyTextToClipboard(hwnd_, BuildFingerprintText());
+        }
         break;
     case ID_COPY_PATH:
         if (state_.HasImage()) PrivacyGuard::CopyTextToClipboard(hwnd_, state_.Image().path);
         break;
     case ID_COPY_HASH:
-        if (state_.HasImage()) PrivacyGuard::CopyTextToClipboard(hwnd_, L"SHA-256: " + state_.Image().hashes.sha256 + L"\r\nSHA-1: " + state_.Image().hashes.sha1 + L"\r\nMD5: " + state_.Image().hashes.md5);
+        if (EnsureFullImageLoaded())
+        {
+            if (state_.MetadataVisible())
+                UpdateMetadataPanel();
+
+            const auto& img = state_.Image();
+            std::wstringstream ss;
+            ss << L"SilentPixel - hashes\r\n\r\n";
+            ss << L"Archivo: " << img.fileName << L"\r\n\r\n";
+            ss << L"SHA-256: " << img.hashes.sha256 << L"\r\n";
+            ss << L"SHA-1: " << img.hashes.sha1 << L"\r\n";
+            ss << L"MD5: " << img.hashes.md5 << L"\r\n";
+
+            PrivacyGuard::CopyTextToClipboard(hwnd_, ss.str());
+        }
         break;
     case ID_EXPORT_TXT: if (EnsureFullImageLoaded()) ExportReportTxt(); break;
     case ID_CLEAN_COPY: if (EnsureFullImageLoaded()) SaveCleanCopy(); break;
@@ -2250,6 +2534,8 @@ std::wstring MainWindow::BuildFingerprintText() const
 
     ss << L"Exacto\r\n";
     ss << L"SHA-256: " << img.hashes.sha256 << L"\r\n";
+    ss << L"SHA-1: " << img.hashes.sha1 << L"\r\n";
+    ss << L"MD5: " << img.hashes.md5 << L"\r\n";
     ss << L"PixelHash64: " << pixelHash << L"\r\n\r\n";
 
     ss << L"Parecido visual\r\n";
@@ -2266,7 +2552,7 @@ std::wstring MainWindow::BuildFingerprintText() const
     ss << L"Ubicación: " << (meta.HasGps() ? L"sí" : L"no") << L"\r\n";
     ss << L"\r\n";
 
-    ss << L"Uso: SHA-256 identifica el archivo exacto. aHash/dHash ayudan a comparar parecido visual aunque cambie la compresión o el tamaño.\r\n";
+    ss << L"Uso: SHA-256, SHA-1 y MD5 identifican el archivo exacto. PixelHash64 identifica los p\u00EDxeles decodificados. aHash/dHash ayudan a comparar parecido visual aunque cambie la compresi\u00F3n o el tama\u00F1o.\r\n";
 
     return ss.str();
 }
@@ -2417,7 +2703,7 @@ std::wstring MainWindow::BuildFullReportText() const
     ss << L"PixelHash64 decodificado: " << BuildDecodedPixelHash64(img) << L"\r\n";
     ss << L"aHash64 visual: " << BuildAverageHash64(img) << L"\r\n";
     ss << L"dHash64 visual: " << BuildDifferenceHash64(img) << L"\r\n";
-    ss << L"Uso: SHA-256 identifica el archivo exacto. aHash/dHash ayudan a comparar parecido visual aunque cambie la compresión o el tamaño.\r\n\r\n";
+    ss << L"Uso: SHA-256, SHA-1 y MD5 identifican el archivo exacto. PixelHash64 identifica los p\u00EDxeles decodificados. aHash/dHash ayudan a comparar parecido visual aunque cambie la compresi\u00F3n o el tama\u00F1o.\r\n\r\n";
 
     section(ss, L"Contenedor r\u00E1pido");
     const bool hasExif = HasContainerMarkerExact(img.metadata, L"EXIF");
