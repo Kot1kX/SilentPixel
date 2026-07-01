@@ -654,7 +654,7 @@ LRESULT MainWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEMOVE: OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), wParam); return 0;
     case WM_LBUTTONUP: OnLeftButtonUp(); return 0;
     case WM_CAPTURECHANGED: panning_ = false; return 0;
-    case WM_MOUSEWHEEL: OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam)); return 0;
+    case WM_MOUSEWHEEL: OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); return 0;
     case WM_KEYDOWN: OnKeyDown(wParam); return 0;
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORSTATIC:
@@ -993,9 +993,70 @@ void MainWindow::OnDropFiles(HDROP drop)
     }
 }
 
-void MainWindow::OnMouseWheel(short delta)
+void MainWindow::OnMouseWheel(short delta, int screenX, int screenY)
 {
-    ZoomByFactor(delta > 0 ? 1.12 : 1.0 / 1.12);
+    if (!state_.HasImage() || state_.DisplayWidth() == 0 || state_.DisplayHeight() == 0)
+        return;
+
+    POINT pt{ screenX, screenY };
+    ScreenToClient(hwnd_, &pt);
+
+    RECT rc = ImageArea();
+    const int areaW = rc.right - rc.left;
+    const int areaH = rc.bottom - rc.top;
+    if (areaW <= 0 || areaH <= 0)
+        return;
+
+    const double factor = delta > 0 ? 1.12 : 1.0 / 1.12;
+
+    if (!PtInRect(&rc, pt))
+    {
+        ZoomByFactor(factor);
+        return;
+    }
+
+    double oldScale = state_.Zoom();
+    if (state_.FitToWindow())
+    {
+        oldScale = CurrentFitZoom();
+        state_.SetZoom(oldScale);
+    }
+
+    if (oldScale <= 0.0)
+        oldScale = 1.0;
+
+    const int oldW = std::max(1, static_cast<int>(state_.DisplayWidth() * oldScale));
+    const int oldH = std::max(1, static_cast<int>(state_.DisplayHeight() * oldScale));
+
+    const double oldX = static_cast<double>(rc.left) + (static_cast<double>(areaW - oldW) / 2.0) + static_cast<double>(panX_);
+    const double oldY = static_cast<double>(rc.top) + (static_cast<double>(areaH - oldH) / 2.0) + static_cast<double>(panY_);
+
+    const double imageX = (static_cast<double>(pt.x) - oldX) / oldScale;
+    const double imageY = (static_cast<double>(pt.y) - oldY) / oldScale;
+
+    state_.ZoomBy(factor);
+
+    double newScale = state_.Zoom();
+    if (newScale <= 0.0)
+        newScale = 1.0;
+
+    const int newW = std::max(1, static_cast<int>(state_.DisplayWidth() * newScale));
+    const int newH = std::max(1, static_cast<int>(state_.DisplayHeight() * newScale));
+
+    const double newX = static_cast<double>(pt.x) - imageX * newScale;
+    const double newY = static_cast<double>(pt.y) - imageY * newScale;
+
+    auto roundToInt = [](double value) -> int
+    {
+        return static_cast<int>(value >= 0.0 ? value + 0.5 : value - 0.5);
+    };
+
+    panX_ = roundToInt(newX - static_cast<double>(rc.left) - (static_cast<double>(areaW - newW) / 2.0));
+    panY_ = roundToInt(newY - static_cast<double>(rc.top) - (static_cast<double>(areaH - newH) / 2.0));
+
+    ClampPanToImageArea();
+    UpdateStatus();
+    InvalidateImageAreaOnly();
 }
 
 

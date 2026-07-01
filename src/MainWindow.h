@@ -87,7 +87,7 @@ private:
     void OnPaint();
     void OnCommand(WORD id);
     void OnDropFiles(HDROP drop);
-    void OnMouseWheel(short delta);
+    void OnMouseWheel(short delta, int screenX, int screenY);
     void OnLeftButtonDown(int x, int y);
     void OnMouseMove(int x, int y, WPARAM keys);
     void OnLeftButtonUp();
