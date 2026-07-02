@@ -6,6 +6,12 @@ Está diseñado para abrir imágenes desde el propio equipo, mostrar informació
 
 ![Vista previa de SilentPixel](assets/silentpixel-preview-mclaren.png)
 
+## Requisitos
+
+- Windows 10 / Windows 11.
+- Sistema de 64 bits recomendado.
+- Extrae la carpeta portable completa antes de ejecutar `SilentPixel.exe`.
+
 ## Objetivo
 
 SilentPixel nace como una alternativa ligera, portable y privada a los visores de imágenes modernos que dependen de cuentas, servicios en segundo plano, sincronización, nube o telemetría.
@@ -222,5 +228,6 @@ Consulta el archivo `LICENSE`.
 Versión inicial pública: `v0.1.0`.
 
 SilentPixel está en fase inicial, pero ya es funcional como visor local/offline e inspector técnico de metadatos para imágenes comunes.
+
 
 
